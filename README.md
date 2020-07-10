@@ -2,7 +2,7 @@
 
 Plugin to report posts easily.
 
-# Steps
+### Steps
 
 1. Create a bot
 2. Create a channel between bot and admin who will take action on the reported post
