@@ -1,0 +1,9 @@
+{
+    "id": "com.rr250.report-post-plugin",
+    "name": "Report Post",
+    "description": "Allow to report posts",
+    "version": "0.0.1",
+    "webapp": {
+        "bundle_path": "webapp/dist/main.js"
+    }
+}
