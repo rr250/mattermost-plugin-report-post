@@ -15,7 +15,6 @@ class ReportPlugin extends Component {
         registry.registerPostDropdownMenuAction('Report', (postId) => {
             const state = store.getState();
             const post = getPost(state, postId);
-            console.log(post);
             const currentUser = getCurrentUser(state);
             const user = getUser(state, post.user_id);
             const newPost = {
@@ -25,8 +24,16 @@ class ReportPlugin extends Component {
                 message: '',
                 props: {
                     attachments: [{
-                        text: 'Report Alert:-\n\tReported: ' + user.first_name + ' ' + user.last_name + '\n\tReported Username: ' + user.username + '\n\tReported Email: ' + user.email +
-                        '\n\tReported By: ' + currentUser.username + '\n\tReported Text ID: ' + post.id + '\n\nReported Text:-\n' + post.message + '\n',
+                        text: 'Report Alert:-\n\tReported: ' +
+                        user.first_name + ' ' + user.last_name +
+                        '\n\tReported ID: ' + user.id +
+                        '\n\tReported Channel ID: ' + post.channel_id +
+                        '\n\tReported Username: ' + user.username +
+                        '\n\tReported Email: ' + user.email +
+                        '\n\tReported By: ' + currentUser.username +
+                        '\n\tReported By ID: ' + currentUser.id +
+                        '\n\tReported Text ID: ' + post.id +
+                        '\n\nReported Text:-\n' + post.message + '\n',
                     }],
                 },
             };
