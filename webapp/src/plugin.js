@@ -13,10 +13,12 @@ class ReportPlugin extends Component {
     initialize(registry, store) {
         registry.registerPostDropdownMenuAction('Report', (postId) => {
             const state = store.getState();
+            console.log(state);
             const post = getPost(state, postId);
             const currentUser = getCurrentUser(state);
             const user = getUser(state, post.user_id);
             Client4.getConfig().then((res) => {
+                console.log(res);
                 const botId = res.PluginSettings.Plugins[pluginId].botid;
                 const channelId = res.PluginSettings.Plugins[pluginId].channelid;
                 const newPost = {
