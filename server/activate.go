@@ -17,6 +17,7 @@ func (p *Plugin) OnActivate() error {
 		return errors.Wrap(err, "failed to ensure bot user")
 	}
 	p.botUserID = botUserID
+	p.router = p.InitAPI()
 	return nil
 }
 

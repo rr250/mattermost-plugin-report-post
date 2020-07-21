@@ -15,11 +15,6 @@
     },
     "settings_schema": {
         "settings": [{
-            "key": "BotID",
-            "display_name": "Report Post Bot ID",
-            "type": "text",
-            "help_text": "Report Post Bot ID"
-          },{
             "key": "ChannelID",
             "display_name": "Channel ID",
             "type": "text",
