@@ -26,6 +26,7 @@ class ReportPlugin extends Component {
                 reported_id: user.id,
                 channel_id: post.channel_id,
                 reported_username: user.username,
+                reported_email: user.email,
                 reported_text: post.message,
                 reported_text_id: post.id,
             }).then().catch((err) => {
