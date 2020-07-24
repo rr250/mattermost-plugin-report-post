@@ -51,12 +51,12 @@ func (p *Plugin) postReport(w http.ResponseWriter, req *http.Request) {
 				{
 					Text: "Report Alert:-\n\tReported: " +
 						reportpost.ReportedName +
-						"\n\tReported ID: " + reportpost.ReportedID +
+						"\n\tReported User ID: " + reportpost.ReportedID +
 						"\n\tReported Channel ID: " + reportpost.ChannelID +
 						"\n\tReported Username: " + reportpost.ReportedUserName +
 						"\n\tReported Email: " + reportpost.ReportedEmail +
 						"\n\tReported By: " + reportpost.ReportedBy +
-						"\n\tReported By ID: " + reportpost.ReportedByID +
+						"\n\tReported By User ID: " + reportpost.ReportedByID +
 						"\n\tReported Text ID: " + reportpost.ReportedTextID +
 						"\n\nReported Text:-\n" + reportpost.ReportedText + "\n ",
 				},
