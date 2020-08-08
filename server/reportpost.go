@@ -12,6 +12,7 @@ type ReportPost struct {
 	ReportedName     string    `json:"reported_name"`
 	ReportedID       string    `json:"reported_id"`
 	ChannelID        string    `json:"channel_id"`
+	ChannelName      string    `json:"channel_name"`
 	ReportedUserName string    `json:"reported_username"`
 	ReportedEmail    string    `json:"reported_email"`
 	ReportedText     string    `json:"reported_text"`
