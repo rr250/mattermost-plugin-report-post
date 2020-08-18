@@ -17,4 +17,10 @@ type ReportPost struct {
 	ReportedEmail    string    `json:"reported_email"`
 	ReportedText     string    `json:"reported_text"`
 	ReportedTextID   string    `json:"reported_text_id"`
+	Reason           string
+}
+
+type PostDetails struct {
+	PostID        string `json:"post_id"`
+	CurrentUserID string `json:"current_user_id"`
 }

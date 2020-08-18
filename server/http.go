@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/mattermost/mattermost-server/v5/model"
@@ -14,7 +15,10 @@ import (
 
 func (p *Plugin) InitAPI() *mux.Router {
 	r := mux.NewRouter()
-	r.HandleFunc("/postreport", p.postReport).Methods("POST")
+	r.HandleFunc("/getreason", p.getReason).Methods("POST")
+	r.HandleFunc("/reason", p.reportWithPredefinedReason).Methods("POST")
+	r.HandleFunc("/customreason", p.reportWithCustomReason).Methods("POST")
+	r.HandleFunc("/getcustomreason", p.getReportWithCustomReason).Methods("POST")
 	r.HandleFunc("/deletepost", p.deletePost).Methods("POST")
 	return r
 }
@@ -23,7 +27,7 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 	p.router.ServeHTTP(w, r)
 }
 
-func (p *Plugin) postReport(w http.ResponseWriter, req *http.Request) {
+func (p *Plugin) getReason(w http.ResponseWriter, req *http.Request) {
 	body, err1 := ioutil.ReadAll(io.LimitReader(req.Body, 1048576))
 	if err1 != nil {
 		p.API.LogError("can't read body", err1)
@@ -32,18 +36,163 @@ func (p *Plugin) postReport(w http.ResponseWriter, req *http.Request) {
 	if err2 := req.Body.Close(); err2 != nil {
 		p.API.LogError("can't read body", err2)
 	}
-	var reportpost ReportPost
-	if err3 := json.Unmarshal(body, &reportpost); err3 != nil {
+	var postDetails PostDetails
+	if err3 := json.Unmarshal(body, &postDetails); err3 != nil {
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.WriteHeader(422)
 		if err4 := json.NewEncoder(w).Encode(err3); err4 != nil {
 			p.API.LogError("can't unmarshall body", err4)
 		}
 	}
+
+	post, err7 := p.API.GetPost(postDetails.PostID)
+	if err7 != nil {
+		p.API.LogError("can't fetch post", err7)
+	}
+
+	postModel := &model.Post{
+		UserId:    p.botUserID,
+		ChannelId: post.ChannelId,
+		Props: model.StringInterface{
+			"attachments": []*model.SlackAttachment{
+				{
+					Text: "Why do you want to report post?",
+					Actions: []*model.PostAction{
+						{
+							Integration: &model.PostActionIntegration{
+								URL: fmt.Sprintf("/plugins/%s/reason", manifest.ID),
+								Context: model.StringInterface{
+									"action":       "reason",
+									"reportpostid": postDetails.PostID,
+								},
+							},
+							Name: "SELECT",
+							Type: model.POST_ACTION_TYPE_SELECT,
+							Options: []*model.PostActionOptions{
+								{
+									Text:  "SPAM",
+									Value: "Spam",
+								},
+								{
+									Text:  "INAPPROPRIATE",
+									Value: "Inappropriate",
+								},
+								{
+									Text:  "HARASSMENT",
+									Value: "Harassment",
+								},
+								{
+									Text:  "HATE SPEECH",
+									Value: "Hate Speech",
+								},
+								{
+									Text:  "HATE SPEECH",
+									Value: "Hate Speech",
+								},
+								{
+									Text:  "MOCKING",
+									Value: "Mocking",
+								},
+								{
+									Text:  "ABUSIVE",
+									Value: "Abusive",
+								},
+							},
+						},
+						{
+							Integration: &model.PostActionIntegration{
+								URL: fmt.Sprintf("/plugins/%s/getcustomreason", manifest.ID),
+								Context: model.StringInterface{
+									"action":       "getcustomreason",
+									"reportpostid": postDetails.PostID,
+								},
+							},
+							Type: model.POST_ACTION_TYPE_BUTTON,
+							Name: "CUSTOM REASON",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	p.API.SendEphemeralPost(postDetails.CurrentUserID, postModel)
+}
+
+func (p *Plugin) reportWithPredefinedReason(w http.ResponseWriter, req *http.Request) {
+	request := model.PostActionIntegrationRequestFromJson(req.Body)
+	writePostActionIntegrationResponseOk(w, &model.PostActionIntegrationResponse{})
+	p.postReport(request.UserId, request.Context["reportpostid"].(string), request.Context["selected_option"].(string))
+	p.API.DeleteEphemeralPost(request.UserId, request.PostId)
+}
+
+func (p *Plugin) getReportWithCustomReason(w http.ResponseWriter, req *http.Request) {
+	request := model.PostActionIntegrationRequestFromJson(req.Body)
+	writePostActionIntegrationResponseOk(w, &model.PostActionIntegrationResponse{})
+	dialogRequest := model.OpenDialogRequest{
+		TriggerId: request.TriggerId,
+		URL:       fmt.Sprintf("/plugins/%s/customreason", manifest.ID),
+		Dialog: model.Dialog{
+			Title:       "Why do you want to report this post?",
+			CallbackId:  model.NewId(),
+			SubmitLabel: "Report",
+			State:       request.Context["reportpostid"].(string),
+			Elements: []model.DialogElement{
+				{
+					DisplayName: "Reason",
+					Name:        "reason",
+					Type:        "text",
+					SubType:     "text",
+					Default:     " ",
+				},
+			},
+		},
+	}
+	if pErr := p.API.OpenInteractiveDialog(dialogRequest); pErr != nil {
+		p.API.LogError("Failed opening interactive dialog " + pErr.Error())
+	}
+	p.API.DeleteEphemeralPost(request.UserId, request.PostId)
+}
+
+func (p *Plugin) reportWithCustomReason(w http.ResponseWriter, req *http.Request) {
+	request := model.SubmitDialogRequestFromJson(req.Body)
+	reason := request.Submission["reason"].(string)
+	reportpostID := request.State
+	p.postReport(request.UserId, reportpostID, reason)
+}
+
+func (p *Plugin) postReport(currentUserID string, reportpostID string, reason string) {
 	configuration := p.getConfiguration()
-	channel, err8 := p.API.GetChannel(reportpost.ChannelID)
+	post, err1 := p.API.GetPost(reportpostID)
+	if err1 != nil {
+		p.API.LogError("failed to get post", err1)
+	}
+	currentUser, err2 := p.API.GetUser(currentUserID)
+	if err2 != nil {
+		p.API.LogError("failed to get current user", err2)
+	}
+	reportedUser, err3 := p.API.GetUser(post.UserId)
+	if err2 != nil {
+		p.API.LogError("failed to get reported user", err3)
+	}
+	channel, err8 := p.API.GetChannel(post.ChannelId)
 	if err8 != nil {
 		p.API.LogError("failed to get channel", err8)
+	}
+	reportpost := ReportPost{
+		ID:               model.NewId(),
+		ReportedBy:       currentUser.GetFullName(),
+		ReportedByID:     currentUserID,
+		CreatedAt:        time.Now(),
+		ReportedName:     reportedUser.GetFullName(),
+		ReportedID:       reportedUser.Id,
+		ChannelID:        post.ChannelId,
+		ChannelName:      channel.Name,
+		ReportedUserName: reportedUser.Username,
+		ReportedEmail:    reportedUser.Email,
+		ReportedText:     post.Message,
+		ReportedTextID:   post.Id,
+		Reason:           reason,
 	}
 	reportpost.ChannelName = channel.Name
 	postModel := &model.Post{
@@ -61,8 +210,9 @@ func (p *Plugin) postReport(w http.ResponseWriter, req *http.Request) {
 						"\n\tReported By User ID: " + reportpost.ReportedByID +
 						"\n\tReported Channel ID: " + reportpost.ChannelID +
 						"\n\tReported Channel Name: " + reportpost.ChannelName +
+						"\n\tReason: " + reportpost.Reason +
 						"\n\tReported Text ID: " + reportpost.ReportedTextID +
-						"\n\nReported Text:-\n" + reportpost.ReportedText + "\n ",
+						"\n\nReported Text:-\n" + reportpost.ReportedText,
 					Actions: []*model.PostAction{
 						{
 							Integration: &model.PostActionIntegration{
@@ -84,11 +234,6 @@ func (p *Plugin) postReport(w http.ResponseWriter, req *http.Request) {
 	_, err5 := p.API.CreatePost(postModel)
 	if err5 != nil {
 		p.API.LogError("failed to create post", err5)
-		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-		w.WriteHeader(422)
-		if err6 := json.NewEncoder(w).Encode(err5); err6 != nil {
-			p.API.LogError("can't create post", err6)
-		}
 	}
 
 	if channel.Type == "O" {
@@ -156,30 +301,6 @@ func (p *Plugin) deletePost(w http.ResponseWriter, req *http.Request) {
 			Message:   fmt.Sprintf("Deleted successfully"),
 		}
 		p.API.SendEphemeralPost(request.UserId, postModel)
-		// configuration := p.getConfiguration()
-		// postModel = &model.Post{
-		// 	UserId:    p.botUserID,
-		// 	ChannelId: configuration.ChannelID,
-		// 	Props: model.StringInterface{
-		// 		"attachments": []*model.SlackAttachment{
-		// 			{
-		// 				Text: "Report Alert:-\n\tReported: " +
-		// 					reportpost.ReportedName +
-		// 					"\n\tReported User ID: " + reportpost.ReportedID +
-		// 					"\n\tReported Username: " + reportpost.ReportedUserName +
-		// 					"\n\tReported Email: " + reportpost.ReportedEmail +
-		// 					"\n\tReported By: " + reportpost.ReportedBy +
-		// 					"\n\tReported By User ID: " + reportpost.ReportedByID +
-		// 					"\n\tReported Channel ID: " + reportpost.ChannelID +
-		// 					"\n\tReported Channel Name: " + reportpost.ChannelName +
-		// 					"\n\tReported Text ID: " + reportpost.ReportedTextID +
-		// 					"\n\nReported Text:-\n" + reportpost.ReportedText + "\n ",
-		// 			},
-		// 		},
-		// 	},
-		// }
-
-		// p.API.UpdatePost(postModel)
 	}
 }
 
