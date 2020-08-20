@@ -70,31 +70,31 @@ func (p *Plugin) getReason(w http.ResponseWriter, req *http.Request) {
 							Type: model.POST_ACTION_TYPE_SELECT,
 							Options: []*model.PostActionOptions{
 								{
-									Text:  "SPAM",
+									Text:  "Spam",
 									Value: "Spam",
 								},
 								{
-									Text:  "INAPPROPRIATE",
+									Text:  "Posted in wrong channel",
+									Value: "Posted in wrong channel",
+								},
+								{
+									Text:  "Inappropriate",
 									Value: "Inappropriate",
 								},
 								{
-									Text:  "HARASSMENT",
+									Text:  "Harassment",
 									Value: "Harassment",
 								},
 								{
-									Text:  "HATE SPEECH",
+									Text:  "Hate Speech",
 									Value: "Hate Speech",
 								},
 								{
-									Text:  "HATE SPEECH",
-									Value: "Hate Speech",
-								},
-								{
-									Text:  "MOCKING",
+									Text:  "Mocking",
 									Value: "Mocking",
 								},
 								{
-									Text:  "ABUSIVE",
+									Text:  "Abusive",
 									Value: "Abusive",
 								},
 							},
