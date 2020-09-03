@@ -1,21 +1,18 @@
 /* eslint-disable lines-around-comment */
 /* eslint-disable no-console */
 import {Component} from 'react';
-import axios from 'axios';
+import {Client4} from 'mattermost-redux/client';
 
 import {id as pluginId} from './manifest';
 
 // eslint-disable-next-line react/require-optimization
 class ReportPlugin extends Component {
-    initialize(registry, store) {
-        registry.registerPostDropdownMenuAction('Report', (postId) => {
-            const state = store.getState();
-            axios.post('/plugins/' + pluginId + '/getreason', {
-                post_id: postId,
-                current_user_id: state.user_id,
-            }).then().catch((err) => {
-                console.log(err);
-            });
+    initialize(registry) {
+        registry.registerPostDropdownMenuAction('Report', async (postId) => {
+            await fetch(window.location.origin + '/plugins/' + pluginId + '/getreason', Client4.getOptions({
+                method: 'post',
+                body: JSON.stringify({post_id: postId}),
+            }));
         });
     }
 

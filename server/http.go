@@ -31,10 +31,18 @@ func (p *Plugin) getReason(w http.ResponseWriter, req *http.Request) {
 	body, err1 := ioutil.ReadAll(io.LimitReader(req.Body, 1048576))
 	if err1 != nil {
 		p.API.LogError("can't read body", err1)
+		return
 	}
 
 	if err2 := req.Body.Close(); err2 != nil {
 		p.API.LogError("can't read body", err2)
+		return
+	}
+	currentUserID := req.Header.Get("Mattermost-User-ID")
+	if currentUserID == "" {
+		p.API.LogInfo("", req.Header.Get("Mattermost-User-ID"))
+		p.API.LogError("Unauthorized")
+		return
 	}
 	var postDetails PostDetails
 	if err3 := json.Unmarshal(body, &postDetails); err3 != nil {
@@ -44,6 +52,7 @@ func (p *Plugin) getReason(w http.ResponseWriter, req *http.Request) {
 			p.API.LogError("can't unmarshall body", err4)
 		}
 	}
+	postDetails.CurrentUserID = currentUserID
 
 	post, err7 := p.API.GetPost(postDetails.PostID)
 	if err7 != nil {
@@ -70,12 +79,16 @@ func (p *Plugin) getReason(w http.ResponseWriter, req *http.Request) {
 							Type: model.POST_ACTION_TYPE_SELECT,
 							Options: []*model.PostActionOptions{
 								{
-									Text:  "Spam",
-									Value: "Spam",
-								},
-								{
 									Text:  "Posted in wrong channel",
 									Value: "Posted in wrong channel",
+								},
+								{
+									Text:  "Posted outside thread",
+									Value: "Posted outside thread",
+								},
+								{
+									Text:  "Spam",
+									Value: "Spam",
 								},
 								{
 									Text:  "Inappropriate",
